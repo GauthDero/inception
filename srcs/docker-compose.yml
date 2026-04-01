@@ -1,0 +1,75 @@
+services:
+  mariadb:
+    build: ./requirements/mariadb 
+    init: true
+    container_name: mariadb    
+    secrets:
+      - db_root_pwd
+      - db_user_pwd
+    env_file: .env              
+    volumes:                    
+      - mariadb_data:/var/lib/mysql
+    networks:                 
+      - gderoception
+    restart: unless-stopped  
+
+  wordpress:
+    build: ./requirements/wordpress
+    init: true
+    container_name: wordpress-php
+    secrets:
+      - db_user_pwd
+      - wp_admin_pwd
+      - wp_user_pwd
+    env_file: .env
+    volumes:
+      - wordpress_data:/var/www/html 
+    networks:
+      - gderoception
+    depends_on:
+      - mariadb               
+    restart: unless-stopped 
+
+  nginx:
+    build: ./requirements/nginx
+    init: true
+    container_name: nginx
+    env_file: .env
+    ports:
+      - "443:443"             
+    volumes:
+      - wordpress_data:/var/www/html  
+    networks:
+      - gderoception
+    depends_on:
+      - wordpress            
+    restart: unless-stopped
+
+secrets:
+  db_root_pwd:
+    file: ../secrets/db_root_password.txt
+  db_user_pwd:
+    file: ../secrets/db_user_password.txt
+  wp_admin_pwd:
+    file: ../secrets/wp_admin_password.txt
+  wp_user_pwd:
+    file: ../secrets/wp_user_password.txt
+
+volumes:
+  mariadb_data:
+    driver: local           
+    driver_opts:
+      type: none
+      o: bind
+      device: ${SQL_DATA_PATH}  
+
+  wordpress_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${WP_DATA_PATH}
+
+networks:
+  gderoception:
+    driver: bridge         
